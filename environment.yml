@@ -1,0 +1,17 @@
+name: kcnq1pred
+channels:
+  - bioconda
+  - defaults
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.6
+  - torchvision
+  - matplotlib
+  - pytorch
+  - pandas
+  - scikit-learn
+  - seaborn
+  - rdkit
+  - scipy
+  - h5py

@@ -1,0 +1,45 @@
+Combine(
+  Define(AllMutationData=Mapped(file=./kcnq1.all_variants.csv,key=MutationId,delimiter=",")),
+ Define(IsRealMutation=NotEqual(MaxIndex(NativeAADescriptor(AAType)),MaxIndex(MutantAADescriptor(AAType)))),
+Define(Volume_AA=Subtract(lhs=MutantAADescriptor(AA_Volume),rhs=NativeAADescriptor(AA_Volume))),
+Define(ChangeinPolarizability=Subtract(lhs=MutantAADescriptor(AA_Polarizability),rhs=NativeAADescriptor(AA_Polarizability))),
+Define(changeinH_D=Subtract(lhs=MutantAADescriptor(AA_HDonors),rhs=NativeAADescriptor(AA_HDonors))),
+Define(changeinH_A=Subtract(lhs=MutantAADescriptor(AA_HAcceptors),rhs=NativeAADescriptor(AA_HAcceptors))),
+Define(mu_core1=Multiply(Greater(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(11.25)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-11.25))),rhs=Constant(1.5)),MutantAADescriptor(AA_FreeEnergyCore))),
+Define(mu_trans1=Multiply(Add(Greater(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(23.75)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(11.25))),rhs=Constant(1.9)),Greater(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-11.25)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-23.75))),rhs=Constant(1.9))),MutantAADescriptor(AA_FreeEnergyTransition))),
+Define(mu_sol1=Multiply(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-23.75)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(23.75))),MutantAADescriptor(AA_FreeEnergySolution))),
+Define(Mutant_hydro=Add(mu_core1,mu_trans1,mu_sol1)),
+Define(na_core1=Multiply(Greater(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(11.25)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-11.25))),rhs=Constant(1.5)),NativeAADescriptor(AA_FreeEnergyCore))),
+Define(na_trans1=Multiply(Add(Greater(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(23.75)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(11.25))),rhs=Constant(1.9)),Greater(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-11.25)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-23.75))),rhs=Constant(1.9))),NativeAADescriptor(AA_FreeEnergyTransition))),
+Define(na_sol1=Multiply(lhs=Add(Less(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(-23.75)),Greater(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(23.75))),NativeAADescriptor(AA_FreeEnergySolution))),
+Define(Native_hydro=Add(na_core1,na_trans1,na_sol1)),
+Define(transition_cos_pos=Multiply(Multiply(Add(Cos(Multiply(Constant(3.14),Subtract(lhs=Partial(NativeAADescriptor(Position),indices(2)),rhs=Constant(11.25)),Constant(0.08))),Constant(1)),Constant(0.5)),WithinRange(begin=11.25, descriptor=Partial(NativeAADescriptor(Position),indices(2)), end=23.75, inclusive=0))),
+Define(transition_cos_neg=Multiply(Multiply(Add(Cos(Multiply(Constant(3.14),Subtract(lhs=Constant(-11.25),rhs=Partial(NativeAADescriptor(Position),indices(2))),Constant(-0.08))),Constant(1)),Constant(0.5)),WithinRange(begin=-23.75, descriptor=Partial(NativeAADescriptor(Position),indices(2)), end=-11.25, inclusive=0))),
+Define(core_region=WithinRange(begin=-11.25, descriptor=Partial(NativeAADescriptor(Position),indices(2)), end=11.25, inclusive=0)),
+Define(location_on_membrane=Add(core_region,transition_cos_neg,transition_cos_pos)),
+#NativeAADescriptor(AA_StericalParameter),
+#MutantAADescriptor(AA_StericalParameter),
+#NativeAADescriptor(SASANeighborVector),
+changeinH_A,
+changeinH_D,
+Volume_AA,
+  Template(
+      signature=BlastInfo(X),
+      Combine(
+       Subtract(
+         lhs=DescriptorSum(Multiply(NativeAADescriptor(AABlastProfile(extension=X)),NativeAADescriptor(AAType))),
+         rhs=DescriptorSum(Multiply(NativeAADescriptor(AABlastProfile(extension=X)),MutantAADescriptor(AAType)))
+       )
+      )
+    ),
+#   Define(AllBlastInfo=ForEach(template=BlastInfo(X),variable=X,values(.nr.ascii4,.uniref50.0.00001.ascii4))),
+   Define(AllBlastInfo=ForEach(template=BlastInfo(X),variable=X,values(.nr.ascii4))),
+AllBlastInfo,
+
+Mutant_hydro,
+MutantAADescriptor(AA_Polarizability),
+ForEach(template=MutantPropertyDensity(weight=0,std=0,transition=0.5,cutoff=CUT,default(0.167),pseudocount=1,descriptor=NativeAADescriptor(AA_Polarizability)),variable=CUT,values(6.5,12)),
+ForEach(template=MutantPropertyDensity(weight=0,std=0,transition=0.5,cutoff=CUT,default(-0.0346894),pseudocount=1,descriptor=Native_hydro),variable=CUT,values(1,6.5)),
+Sqrt(Add(Multiply(Partial(NativeAADescriptor(Position),indices(0)),Partial(NativeAADescriptor(Position),indices(0))),Multiply(Partial(NativeAADescriptor(Position),indices(1)),Partial(NativeAADescriptor(Position),indices(1))))),
+location_on_membrane
+)

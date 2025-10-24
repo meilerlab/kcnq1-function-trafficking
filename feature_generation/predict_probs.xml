@@ -1,0 +1,19 @@
+<ROSETTASCRIPTS>
+  <RESIDUE_SELECTORS>
+    <Chain name="res" chains="A" />
+  </RESIDUE_SELECTORS>
+  <SIMPLE_METRICS>
+    ----------------- Define models to use -----------------------------
+    <ProteinMPNNProbabilitiesMetric name="mpnn" residue_selector="res"/>
+    <PerResidueEsmProbabilitiesMetric name="esm" residue_selector="res" model="esm2_t33_650M_UR50D" multirun="true"/>
+  </SIMPLE_METRICS>
+  <MOVERS>
+    ----------------- Save probabilities -------------------------------
+    <SaveProbabilitiesMetricMover name="save_mpnn" metric="mpnn" filename="mpnn_probs.weights"/>
+    <SaveProbabilitiesMetricMover name="save_esm" metric="esm" filename="esm_probs.weights"/>      
+  </MOVERS>
+  <PROTOCOLS>
+    <Add mover_name="save_mpnn"/>      
+    <Add mover_name="save_esm"/>
+  </PROTOCOLS>
+</ROSETTASCRIPTS>

@@ -33,7 +33,7 @@ def main():
 
     #ifname_varlists=["list_unc.txt"]
     ## ifname_varlists=["all_am_q1_ambiguous.txt"]
-    #ifname_varlists=["list_twist_250929.txt"]
+    #ifname_varlists=["list_s4.txt"]
     ##########
 
     ##########    

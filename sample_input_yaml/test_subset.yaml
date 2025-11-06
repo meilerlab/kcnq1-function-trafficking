@@ -1,0 +1,73 @@
+## YAML used to use saved models to test on S4 helix residues 
+
+##############################
+## These functions plot AM scores, experimental data, for S4 variants. They are commented out here.
+
+# am_val_plot: True
+# check_experiment_data: True
+# exclUNC: False
+# exclNM: True
+
+##########
+## Use saved model to predict variants 
+
+enable_test: True
+include_list: "list_s4.txt"
+exclUNC: False
+exclNM: False
+
+##########
+
+model_features: 'origammpnnesm'
+fname_model_prefix: "save_model_state.rfc.biophys_evol_am_mpnnesm.excl_ambiguous."
+
+##########
+
+##############################
+
+excludeWT: False
+VSDonly: False
+PDonly: False
+
+featuresCSVList:  ["features_8sik_clean.w_am_mpnn_esm.csv"]
+
+## uncomment either one of these. They are the measurements for S4 residues with variants with codon change separated
+trainLabelsCSV: "s4_250929_w_gc.csv"
+#trainLabelsCSV: "s4_250929_codon_not_gc.csv" 
+
+##########
+labels:
+  - name: iks
+    rcut: [0.65, 1.4]
+    pvalcut: [0.02,0.05]
+    gof: larger
+     
+  - name: v12
+    rcut: [-5,5]
+    pvalcut: [0.02,0.05]
+    gof: smaller
+ 
+  - name: tau_act
+    rcut: [0.7, 1.7]    
+    pvalcut: [0.02,0.05]
+    gof: smaller
+ 
+  - name: tau_deact
+    rcut: [0.75, 1.25]
+    pvalcut: [0.02,0.05]
+    gof: larger
+
+  - name: cell_surf_exp
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger
+
+  - name: tot_exp
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger
+
+  - name: traffick_eff
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger

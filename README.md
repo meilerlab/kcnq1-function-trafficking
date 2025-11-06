@@ -12,27 +12,24 @@ Chang-Gonzalez AC, Bell EW, Vanoye CG, Guadarrama E, Desai RR, DeKeyser J-M, But
 The easiest way to use this repository is to access pre-computed predictions from **`kcnq1_predictions.csv`**. 
 
 ### Repository Structure
-.
-├── main.py                          # Main script for training, evaluating, running classification models 
-├── variant_dataset.py               # Variant data processing
-├── plot_scripts.py                  # Visualization functions
-├── environment.yml                  # Conda environment 
-├── input_8sik_clean.pdb 	     # Input PDB
-├── features_8sik_clean.w_am_mpnn_esm.csv  # Pre-generated features
-├── kcnq1_all_measurements.csv       # Wet-lab experimental measurements
-├── kcnq1_predictions.{csv,hdf5}     # Pre-computed predictions for KCNQ1 variants
-├── saved_models/                    # Trained models and hyperparameters
-├── sample_input_yaml/               # Example input configurations
-├── feature_generation/              # Files for generating model features
-├── list_variant_subsets/            # Lists of variant subsets
-├── additional_analyses_scripts/     # Standalone analysis scripts
-└── s4_data/			     # Electrophysiology data for S4 variants
+- main.py                          # Main script for training, evaluating, running classification models 
+- variant_dataset.py               # Variant data processing
+- plot_scripts.py                  # Visualization functions
+- environment.yml                  # Conda environment 
+- input_8sik_clean.pdb 	     # Input PDB
+- features_8sik_clean.w_am_mpnn_esm.csv  # Pre-generated features
+- kcnq1_all_measurements.csv       # Wet-lab experimental measurements
+- kcnq1_predictions.{csv,hdf5}     # Pre-computed predictions for KCNQ1 variants
+- saved_models/                    # Trained models and hyperparameters
+- sample_input_yaml/               # Example input configurations
+- feature_generation/              # Files for generating model features
+- list_variant_subsets/            # Lists of variant subsets
+- additional_analyses_scripts/     # Standalone analysis scripts
+- s4_data/			     # Electrophysiology data for S4 variants
 
 ### Setup
 This project is built using Python. We recommend using a conda environment to manage dependencies.
 ```
-	bash
-	#
 	conda env create -f environment.yml
 	conda activate kcnq1pred
 ```
@@ -40,8 +37,6 @@ This project is built using Python. We recommend using a conda environment to ma
 ### Usage
 The main pipeline is executed via:
 ```
-	bash
-	#
 	python main.py <input_config.yaml> 
 ```
 The specifications in the YAML determine how the program will run. See sample YAML files in `sample_input_yaml/`. 
@@ -55,20 +50,22 @@ The specifications in the YAML determine how the program will run. See sample YA
 <details>
 <summary>Column headers for <code>features_8sik_clean.w_am_mpnn_esm.csv</code></summary>
 
-Δ Num. H acceptor sites, Δ Num. H donor sites, Δ Volume AA, Δ PSSM NR, Mutant AA hydrophobicity, Mutant AA polarizability, Funct. density (polarizability 6.5 Å), Funct. density (polarizability 12 Å), Funct. density (hydrophobicity 1 Å), Funct. density (hydrophobicity 6.5 Å), Distance from channel pore axis, Burial on membrane, AM, ProteinMPNN, ESM
+Δ Num. H acceptor sites
+Δ Num. H donor sites
+Δ Volume AA
+Δ PSSM NR
+Mutant AA hydrophobicity
+Mutant AA polarizability
+Funct. density (polarizability 6.5 Å)
+Funct. density (polarizability 12 Å)
+Funct. density (hydrophobicity 1 Å)
+Funct. density (hydrophobicity 6.5 Å)
+Distance from channel pore axis
+Burial on membrane
+AM
+ProteinMPNN
+ESM
 </details>
 
 ### Citation
-If you use this code, the models, datasets, or preditions in your research, please cite the corresponding preprint:
-
-@article {Chang-Gonzalez2025,
-	author = {Chang-Gonzalez, Ana C. and Bell, Eric W. and Vanoye, Carlos G. and Guadarrama, Eduardo and Desai, Reshma R. and DeKeyser, Jean-Marc and Butcher, Kathryn R. and Scott, Thomas and Sanders, Charles R. and George, Alfred L. and Ledwitch, Kaitlyn V. and Meiler, Jens},
-	title = {Classification models distinguish functional and trafficking effects of KCNQ1 variants to enhance variant interpretation},
-	elocation-id = {2025.10.31.685955},
-	year = {2025},
-	doi = {10.1101/2025.10.31.685955},
-	publisher = {Cold Spring Harbor Laboratory},
-	URL = {https://www.biorxiv.org/content/early/2025/11/01/2025.10.31.685955},
-	eprint = {https://www.biorxiv.org/content/early/2025/11/01/2025.10.31.685955.full.pdf},
-	journal = {bioRxiv}
-}
+If you use this code, the models, datasets, or preditions in your research, please cite the corresponding preprint: doi = {10.1101/2025.10.31.685955},

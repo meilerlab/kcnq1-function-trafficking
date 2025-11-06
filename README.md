@@ -14,20 +14,20 @@ The easiest way to use this repository is to access pre-computed predictions fro
 ### Repository Structure
 ```
 .
-├── main.py				   # Main script for training, evaluating, running classification models 
-├── variant_dataset.py               	   # Variant data processing
-├── plot_scripts.py                  	   # Visualization functions
-├── environment.yml                  	   # Conda environment 
-├── input_8sik_clean.pdb 	     	   # Input PDB
+├── main.py                          # Main script for training, evaluating, running classification models 
+├── variant_dataset.py               # Variant data processing
+├── plot_scripts.py                  # Visualization functions
+├── environment.yml                  # Conda environment 
+├── input_8sik_clean.pdb 	     # Input PDB
 ├── features_8sik_clean.w_am_mpnn_esm.csv  # Pre-generated features
-├── kcnq1_all_measurements.csv       	   # Wet-lab experimental measurements
-├── kcnq1_predictions.{csv,hdf5}     	   # Pre-computed predictions for KCNQ1 variants
-├── saved_models/                    	   # Trained models and hyperparameters
-├── sample_input_yaml/               	   # Example input configurations
-├── feature_generation/              	   # Files for generating model features
-├── list_variant_subsets/            	   # Lists of variant subsets
-├── additional_analyses_scripts/     	   # Standalone analysis scripts
-└── s4_data/			     	   # Electrophysiology data for S4 variants
+├── kcnq1_all_measurements.csv       # Wet-lab experimental measurements
+├── kcnq1_predictions.{csv,hdf5}     # Pre-computed predictions for KCNQ1 variants
+├── saved_models/                    # Trained models and hyperparameters
+├── sample_input_yaml/               # Example input configurations
+├── feature_generation/              # Files for generating model features
+├── list_variant_subsets/            # Lists of variant subsets
+├── additional_analyses_scripts/     # Standalone analysis scripts
+└── s4_data/			     # Electrophysiology data for S4 variants
 ```
 
 ### Setup
@@ -52,24 +52,22 @@ The specifications in the YAML determine how the program will run. See sample YA
 - The first 12 features were generated using the BCL (https://github.com/BCLCommons/bcl.git)
 <details>
 <summary>Column headers for <code>features_8sik_clean.w_am_mpnn_esm.csv</code></summary>
-```
-Δ Num. H acceptor sites
-Δ Num. H donor sites
-Δ Volume AA
-Δ PSSM NR
-Mutant AA hydrophobicity
-Mutant AA polarizability
-Funct. density (polarizability 6.5 Å)
-Funct. density (polarizability 12 Å)
-Funct. density (hydrophobicity 1 Å)
-Funct. density (hydrophobicity 6.5 Å)
-Distance from channel pore axis
-Burial on membrane
-AM
-ProteinMPNN
+Δ Num. H acceptor sites, 
+Δ Num. H donor sites, 
+Δ Volume AA, 
+Δ PSSM NR, 
+Mutant AA hydrophobicity, 
+Mutant AA polarizability, 
+Funct. density (polarizability 6.5 Å), 
+Funct. density (polarizability 12 Å), 
+Funct. density (hydrophobicity 1 Å), 
+Funct. density (hydrophobicity 6.5 Å), 
+Distance from channel pore axis, 
+Burial on membrane, 
+AM, 
+ProteinMPNN, 
 ESM
-```
 </details>
 
 ### Citation
-If you use this code, the models, datasets, or preditions in your research, please cite the corresponding preprint: doi = {10.1101/2025.10.31.685955},
+If you use this code, the models, datasets, or preditions in your research, please cite the corresponding preprint https://doi.org/10.1101/2025.10.31.685955}. 

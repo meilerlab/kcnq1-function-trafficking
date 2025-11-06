@@ -12,20 +12,23 @@ Chang-Gonzalez AC, Bell EW, Vanoye CG, Guadarrama E, Desai RR, DeKeyser J-M, But
 The easiest way to use this repository is to access pre-computed predictions from **`kcnq1_predictions.csv`**. 
 
 ### Repository Structure
-- main.py                          # Main script for training, evaluating, running classification models 
-- variant_dataset.py               # Variant data processing
-- plot_scripts.py                  # Visualization functions
-- environment.yml                  # Conda environment 
-- input_8sik_clean.pdb 	     # Input PDB
-- features_8sik_clean.w_am_mpnn_esm.csv  # Pre-generated features
-- kcnq1_all_measurements.csv       # Wet-lab experimental measurements
-- kcnq1_predictions.{csv,hdf5}     # Pre-computed predictions for KCNQ1 variants
-- saved_models/                    # Trained models and hyperparameters
-- sample_input_yaml/               # Example input configurations
-- feature_generation/              # Files for generating model features
-- list_variant_subsets/            # Lists of variant subsets
-- additional_analyses_scripts/     # Standalone analysis scripts
-- s4_data/			     # Electrophysiology data for S4 variants
+```
+.
+├── main.py				   # Main script for training, evaluating, running classification models 
+├── variant_dataset.py               	   # Variant data processing
+├── plot_scripts.py                  	   # Visualization functions
+├── environment.yml                  	   # Conda environment 
+├── input_8sik_clean.pdb 	     	   # Input PDB
+├── features_8sik_clean.w_am_mpnn_esm.csv  # Pre-generated features
+├── kcnq1_all_measurements.csv       	   # Wet-lab experimental measurements
+├── kcnq1_predictions.{csv,hdf5}     	   # Pre-computed predictions for KCNQ1 variants
+├── saved_models/                    	   # Trained models and hyperparameters
+├── sample_input_yaml/               	   # Example input configurations
+├── feature_generation/              	   # Files for generating model features
+├── list_variant_subsets/            	   # Lists of variant subsets
+├── additional_analyses_scripts/     	   # Standalone analysis scripts
+└── s4_data/			     	   # Electrophysiology data for S4 variants
+```
 
 ### Setup
 This project is built using Python. We recommend using a conda environment to manage dependencies.
@@ -49,7 +52,7 @@ The specifications in the YAML determine how the program will run. See sample YA
 - The first 12 features were generated using the BCL (https://github.com/BCLCommons/bcl.git)
 <details>
 <summary>Column headers for <code>features_8sik_clean.w_am_mpnn_esm.csv</code></summary>
-
+```
 Δ Num. H acceptor sites
 Δ Num. H donor sites
 Δ Volume AA
@@ -65,6 +68,7 @@ Burial on membrane
 AM
 ProteinMPNN
 ESM
+```
 </details>
 
 ### Citation

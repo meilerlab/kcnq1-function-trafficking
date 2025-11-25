@@ -1,11 +1,11 @@
 # KCNQ1 variant effect function and trafficking 
 
-## Classification models distinguish functional and trafficking effects of KCNQ1 variants to enhance variant interpretation
+## Classification models for KCNQ1 variants distinguish functional and trafficking effects to enhance pathogenicity interpretation
 
 ### Overview
 This repository contains code for predicting KCNQ1 potassium ion channel protein fitness metrics using random forest classifiers. The models are trained on electrophysiological and trafficking data. The models predict how KCNQ1 variants affect channel function or trafficking, improving clinical interpretation of genetic variants.
 
-### Associated Publication
+### Associated Preprint
 Chang-Gonzalez AC, Bell EW, Vanoye CG, Guadarrama E, Desai RR, DeKeyser J-M, Butcher KR, Scott T, Sanders CR, George AL Jr., Ledwitch KV, Meiler J. Classification models distinguish functional and trafficking effects of KCNQ1 variants to enhance variant interpretation. bioRxiv 2025. doi: 10.1101/2025.10.31.685955
 
 ### The easiest way to use this repository is to access pre-computed predictions from **`kcnq1_predictions.csv`**. 

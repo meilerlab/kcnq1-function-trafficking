@@ -1,27 +1,20 @@
-## YAML used to use saved models to test on S4 helix residues 
-
-##############################
-## These functions plot AM scores, experimental data, for S4 variants. They are commented out here.
+# Use trained model to predict S4 variants. 
 
 # am_val_plot: True
-# check_experiment_data: True
-# exclUNC: False
-# exclNM: True
+check_experiment_data: False
+exclUNC: False
+exclNM: False
 
 ##########
-## Use saved model to predict variants 
-
 enable_test: True
-include_list: "list_s4.txt"
+include_list: "../s4_data/list_s4.txt"
 exclUNC: False
 exclNM: False
 
 ##########
 
 model_features: 'origammpnnesm'
-fname_model_prefix: "save_model_state.rfc.biophys_evol_am_mpnnesm.excl_ambiguous."
-
-##########
+fname_model_prefix: "../saved_models/trained_on_all/save_model_state.rfc.biophys_evol_am_mpnnesm."
 
 ##############################
 
@@ -29,11 +22,12 @@ excludeWT: False
 VSDonly: False
 PDonly: False
 
-featuresCSVList:  ["features_8sik_clean.w_am_mpnn_esm.csv"]
+featuresCSVList:  ["../features_8sik_clean.w_am_mpnn_esm.csv"]
 
-## uncomment either one of these. They are the measurements for S4 residues with variants with codon change separated
-trainLabelsCSV: "s4_250929_w_gc.csv"
-#trainLabelsCSV: "s4_250929_codon_not_gc.csv" 
+###### NOTE: experiment labels for S4 set are split for codon duplicates, execute this code with each one individually
+
+trainLabelsCSV: "../s4_data/s4_260508_w_gc.csv"
+# trainLabelsCSV: "../s4_data/s4_260508_codon_not_gc.csv"
 
 ##########
 labels:

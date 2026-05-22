@@ -1,0 +1,69 @@
+## Analysis YAML
+## Used generate SHAP plots (analyze_features_get_waterfall: True)
+## and generate feature-by-class distribution plot (analyze_features_by_class: True)
+
+##########
+## Use saved model to analyze features; variant conditions are same as used for training 
+
+analyze_features: True
+analyze_features_get_waterfall: ['R231C','V307L','V129I','R519H']
+
+exclUNC: False
+exclNM: False
+
+# ### Analyze features across classes
+# #
+# analyze_features_by_class: True
+# exclUNC: True
+# exclNM: True
+
+##########
+
+model_features: 'origammpnnesm'
+fname_model_prefix: "../saved_models/trained_on_all/save_model_state.rfc.biophys_evol_am_mpnnesm."
+
+##############################
+
+excludeWT: True
+VSDonly: False
+PDonly: False
+
+featuresCSVList:  ["../features_8sik_clean.w_am_mpnn_esm.csv"]
+trainLabelsCSV: "../kcnq1_all_measurements.csv"
+
+##########
+labels:
+  - name: iks
+    rcut: [0.65, 1.4]
+    pvalcut: [0.02,0.05]
+    gof: larger
+     
+  - name: v12
+    rcut: [-5,5]
+    pvalcut: [0.02,0.05]
+    gof: smaller
+ 
+  - name: tau_act
+    rcut: [0.7, 1.7]    
+    pvalcut: [0.02,0.05]
+    gof: smaller
+ 
+  - name: tau_deact
+    rcut: [0.75, 1.25]
+    pvalcut: [0.02,0.05]
+    gof: larger
+
+  - name: cell_surf_exp
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger
+
+  - name: tot_exp
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger
+
+  - name: traffick_eff
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger

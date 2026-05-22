@@ -1,0 +1,67 @@
+### YAML to perform 5-fold crossval for feature testing
+### these are: AM, ProteinMPNN, ESM, AM+ProteinMPNN+ESM, BioEvo, All
+
+##############################
+# Step 1 , train models
+# This chunk generates the files currently in ../saved_models/crossval_pretrained/ , which are then used in step 2 
+
+train_rfc_pretrained: True
+fname_prefix: "out_model_pretrained."
+
+exclUNC: True
+exclNM: True
+
+#############################
+# Step 2, plot cross-validation results
+
+analyze_validation_oneclass_pretrained: True
+fname_prefix: "out_model_pretrained."
+
+exclUNC: True
+exclNM: True
+
+##############################
+
+excludeWT: True
+VSDonly: False
+PDonly: False
+
+featuresCSVList:  ["../features_8sik_clean.w_am_mpnn_esm.csv"]
+trainLabelsCSV: "../kcnq1_all_measurements.csv"
+
+##########
+labels:
+  - name: iks
+    rcut: [0.65, 1.4]
+    pvalcut: [0.02,0.05]
+    gof: larger
+     
+  - name: v12
+    rcut: [-5,5]
+    pvalcut: [0.02,0.05]
+    gof: smaller
+ 
+  - name: tau_act
+    rcut: [0.7, 1.7]    
+    pvalcut: [0.02,0.05]
+    gof: smaller
+ 
+  - name: tau_deact
+    rcut: [0.75, 1.25]
+    pvalcut: [0.02,0.05]
+    gof: larger
+
+  - name: cell_surf_exp
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger
+
+  - name: tot_exp
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger
+
+  - name: traffick_eff
+    rcut: [65,150]
+    pvalcut: null
+    gof: larger

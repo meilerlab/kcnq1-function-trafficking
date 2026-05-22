@@ -1,6 +1,0 @@
-aa,variant,iks,iks_pval,v12,v12_pval,tau_act,tau_act_pval,tau_deact,tau_deact_pval,cell_surf_exp,tot_exp,traffick_eff
-228,R228S,0.2182,0.0011,-25.06,0.0007,0.33,0.3421,nan,nan,not_measured,not_measured,not_measured
-234,Q234H,1.038,0.9999,-3.506,0.7825,nan,nan,nan,nan,not_measured,not_measured,not_measured
-237,R237S,0.6236,0.0004,-22.7,0.0001,0.26,0.0003,nan,nan,not_measured,not_measured,not_measured
-240,H240Q,0.3436,0.0415,nan,nan,0.25,0.0625,nan,nan,not_measured,not_measured,not_measured
-245,G245R,0.07704,0.0001,nan,nan,0.06,0.0007,0.9,0.8202,not_measured,not_measured,not_measured

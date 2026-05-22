@@ -26,6 +26,7 @@ Chang-Gonzalez AC, Bell EW, Vanoye CG, Guadarrama E, Desai RR, DeKeyser J-M, But
 ├── feature_generation/              # Files for generating model features
 ├── list_variant_subsets/            # Lists of variant subsets
 ├── additional_analyses_scripts/     # Standalone analysis scripts
+├── multipdb_features_yaml/          # Files for multi-pdb tests
 └── s4_data/			     # Electrophysiology data for S4 variants
 ```
 
@@ -44,7 +45,7 @@ python main.py <input_config.yaml>
 The specifications in the YAML determine how the program will run. See sample YAML files in `sample_input_yaml/`. 
 - ``crossval_q1TrainVal_procedures.yaml`` : uses all variants in `kcnq1_all_measurements.csv` with features defined in `features_8sik_clean.w_am_mpnn_esm.csv` to train random forest classifiers, saves cross-validation metrics, and plots. It also saves best model and hyperparameters for later use.
 - ``train_test_excluding_set.yaml`` : excludes a select subset of variants for training, uses it for testing
-- ``test_subset.yaml`` : uses saved model to get predictions for variant subset 
+- ``test_subset_s4.yaml`` : uses saved model to get predictions for variant subset, uses S4 variants as example 
 
 ### Notes
 - The "Ipeak" label in the manuscript text is "Iks" in project files and YAML
@@ -62,7 +63,7 @@ Funct. density (polarizability 12 Å),
 Funct. density (hydrophobicity 1 Å), 
 Funct. density (hydrophobicity 6.5 Å), 
 Distance from channel pore axis, 
-Burial on membrane, 
+Burial in membrane, 
 AM, 
 ProteinMPNN, 
 ESM

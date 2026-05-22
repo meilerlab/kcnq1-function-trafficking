@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 '''
 Calculate global score from function metrics and analyze. 
 All prediction outputs are saved to hdf5 file. 

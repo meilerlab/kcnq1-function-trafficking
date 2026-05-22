@@ -5,16 +5,17 @@ import re
 import math
 
 from scipy.stats import wilcoxon 
-from statsmodels.stats.multitest import multipletests
 import sklearn.metrics as skm
-from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter, FuncFormatter
 from collections import defaultdict
 import joblib
 from matplotlib_venn import venn3
 from matplotlib.patches import Patch
+import matplotlib.colors as mcolors
 
 from variant_dataset import VariantDataset
 
+plt.rcParams['figure.dpi'] = 300
 ##############################
 def generate_box_plot(labels,models,values,ofname):
     
@@ -74,16 +75,23 @@ def generate_box_plot(labels,models,values,ofname):
 ##############################
 def generate_mcc_violin_plot(all_labels,all_models,values,ofname):
     
-    # Bar plot 
     width=0.11 # for 5 models (incl. mpnn) 
     gap=0.05
     #width=0.15 # for 3 models
     #gap=0.05
 
     xpos = np.arange(len(all_labels))    
-    
+
+    # color palette for mcc plots fig 2 
     colors = plt.cm.tab10(np.linspace(0, 1, len(all_models)))
-    colors = [(r, g, b, 0.7) for r, g, b, _ in colors]  # replace original alpha
+
+    ## for the 3-model struct tests 
+    #c0 = plt.cm.tab10(9)
+    #c_rest = plt.cm.tab20b(np.linspace(0, 1, len(all_models)-1))
+    #colors = np.vstack([c0, c_rest])
+
+    colors = [(r, g, b, 0.7) for r, g, b, _ in colors]  # replace original alpha    
+    
     #colors = ['lightsalmon','lightskyblue','thistle','tab:red','tab:green']
     data,labels,models = [],[],[]
     for model in all_models:
@@ -92,9 +100,10 @@ def generate_mcc_violin_plot(all_labels,all_models,values,ofname):
                 data.append(vi)
                 labels.append(label)
                 models.append(model)
-                
-    #plt.figure(figsize=(14,4)) # for mcc
-    plt.figure(figsize=(14,1.8)) # for brier
+
+    #plt.figure(figsize=(16,4)) # for mcc  , pretrained
+    plt.figure(figsize=(14,4)) # for mcc
+    #plt.figure(figsize=(14,1.8)) # for brier
     axviolin = sbn.violinplot(
         x=labels,
         y=data,
@@ -107,25 +116,11 @@ def generate_mcc_violin_plot(all_labels,all_models,values,ofname):
         #box_width=1        
     )
 
-    #sbn.swarmplot(
-    #    x=labels,
-    #    y=data,
-    #    hue=models,
-    #    #palette=colors,
-    #    palette=[sbn.set_hls_values(c, l=0.7) for c in colors],  # lighten colors
-    #    dodge=True,
-    #    size=3,
-    #    edgecolor="black",
-    #    linewidth=0.5,
-    #    ax=axviolin
-    #    #zorder=0
-    #)
-    
-    #axviolin.set_ylim(-0.21, 1.01) # for mcc
-    #axviolin.set_yticks(np.arange(-0.2, 1.01, 0.1)) # for mcc
+    axviolin.set_ylim(-0.21, 1.01) # for mcc
+    axviolin.set_yticks(np.arange(-0.2, 1.01, 0.1)) # for mcc
 
-    axviolin.set_ylim(0,0.51) # for brier
-    axviolin.set_yticks(np.arange(0,0.51,0.1)) # for brier
+    #axviolin.set_ylim(0,0.51) # for brier
+    #axviolin.set_yticks(np.arange(0,0.51,0.1)) # for brier
     
     axviolin.tick_params(axis='y',labelsize=12)
     axviolin.tick_params(axis='x',labelsize=12)    
@@ -133,7 +128,7 @@ def generate_mcc_violin_plot(all_labels,all_models,values,ofname):
     axviolin.grid(True,alpha=0.3)
     axviolin.legend(loc='lower left')
 
-    plt.savefig(ofname, bbox_inches="tight")  # Perfect for papers
+    plt.savefig(ofname, bbox_inches="tight")  
 
     #####
     # Analyze stdev
@@ -310,7 +305,8 @@ def plotVarClass(labels,valpreds,cmap):
     # plot heatmap
     #fig,ax=plt.subplots(figsize=(9,6))
     #fig,ax=plt.subplots(figsize=(9,2)) # to shorten for the ambiguous vars plot
-    fig,ax=plt.subplots(figsize=(9,8)) # to lengthen for TWIST
+    #fig,ax=plt.subplots(figsize=(9,8)) # to lengthen for TWIST 
+    fig,ax=plt.subplots(figsize=(9,1.2)) # to shorten for twist codon change
 
     im = ax.imshow(data,cmap=cmap,vmin=0,vmax=1,aspect='auto')
 
@@ -394,10 +390,6 @@ def plotVarClass(labels,valpreds,cmap):
     return ax,missing_cells
 
 ###############################
-#def getpos(variant):
-#    match = re.search(r'\d+', variant)
-#    return int(match.group()) if match else float('inf')  # fallback if no number
-
 def getpos(variant):
     match = re.match(r'([A-Za-z])(\d+)([A-Za-z])', variant)
     if match:
@@ -476,11 +468,14 @@ def plotExp(ds,rcut,pvalcut):
     residues = ds.variantNames
     sorted_residues = sorted(residues, key=lambda x: int(''.join(filter(str.isdigit,x))))
 
+    ##########
+    ## for electrophys labels
+    
     ## color by label
     ## normal, lof, xx, nan, unc, gof, nm
     #colors = ['bisque','lightskyblue','k','k','darkgray','lightcoral','k']
     #colors = ['cornsilk','lightsalmon','k','k','darkgray','mediumorchid','k']
-    colors = ['aliceblue','powderblue','k','k','goldenrod','dodgerblue','k']
+    colors = ['aliceblue','powderblue','k','k','goldenrod','dodgerblue','k'] # for fig 1B-H
     
     fig,ax=plt.subplots(figsize=(4,3)) # for manuscript
     ##fig,ax=plt.subplots(figsize=(8,6)) # for assessing twist variants 
@@ -507,8 +502,11 @@ def plotExp(ds,rcut,pvalcut):
     [ax.axvline(x=i, color='k', alpha=0.3, linestyle='--',lw=1) for i in rcut]
     
     ax.tick_params(axis='both',labelsize=11)
-    ax.xaxis.set_major_locator(MultipleLocator(0.5)) # 1.0)) # 0.5)) #1.0))
-    ## ax.set_xlim([0,2.2]) # for tau deact 
+    ax.xaxis.set_major_locator(MultipleLocator(0.5)) # iks and tau deact
+    #ax.set_xlim([-0.1,2.2]) # for tau deact
+    
+    #ax.xaxis.set_major_locator(MultipleLocator(10)) # v12
+    #ax.xaxis.set_major_locator(MultipleLocator(1.0)) # tau act    
     #ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f')) # for tau_act
     
     #################################
@@ -545,8 +543,10 @@ def plotExp(ds,rcut,pvalcut):
         
     axlol.set_xlim([0,2.6]) # iks , tau deact
     #axlol.set_xlim([-30,30]) # v12
-    #axlol.set_xlim([0,5.2]) # tau act
-    axlol.xaxis.set_major_locator(MultipleLocator(0.5)) # 0.5 for iks,tau deact, 1 for tau act, 15 for v12 
+    #axlol.set_xlim([0,4.01]) # tau act
+    axlol.xaxis.set_major_locator(MultipleLocator(0.5)) #  for iks,tau deact
+    #axlol.xaxis.set_major_locator(MultipleLocator(15)) # 15 for v12     
+    #axlol.xaxis.set_major_locator(MultipleLocator(1)) # 1 for tau act
     axlol.xaxis.set_major_formatter(FormatStrFormatter('%.1f')) # for tau_act
     
     [axlol.axvline(x=i, color='k', alpha=0.3, linestyle='--',lw=1) for i in rcut]
@@ -558,10 +558,10 @@ def plotExp(ds,rcut,pvalcut):
     axlol.invert_yaxis()
     figlol.tight_layout()
     figlol.savefig('output_exp_measures.pdf',format='pdf',bbox_inches="tight")
-
+    #plt.show()
     
-    ################################
-    ### distributions for measurement (no p-value)
+    ################################    
+    ### distributions for measurement (no p-value), uncomment for  traficking labels
     #
     #vals = [
     #    ds.labelDictCont[name][0].item()
@@ -583,50 +583,88 @@ def plotExp(ds,rcut,pvalcut):
     #axdist.set_xlim(min(0, xmin), xmax)
     #
     #plt.tight_layout()
-
-    # #####
-    # ## hz swarm plot
-    # vararr = []
-    # traf_colors = []
-    # for i,name in enumerate(sorted_residues):
-    #     if ds.nanTrack[name]:
-    #         continue
-    #     label=ds.labelDict[name]
-    #     vararr.append(ds.labelDictCont[name][0].item())        
-    #     traf_colors.append(colors[label])
+    #plt.show()
+    #
+    ######
+    ### hz swarm plot
+    #vararr = []
+    #traf_colors = []
+    #for i,name in enumerate(sorted_residues):
+    #    if ds.nanTrack[name]:
+    #        continue
+    #    label=ds.labelDict[name]
+    #    vararr.append(ds.labelDictCont[name][0].item())        
+    #    traf_colors.append(colors[label])
     # 
-    # y_cat = ["All"] * len(vararr)
+    #y_cat = ["All"] * len(vararr)
     # 
-    # figswarm, axswarm = plt.subplots(figsize=(4,1.5))
-    # #sbn.violinplot(
-    # #    x=vararr,
-    # #    y=y_cat,
-    # #    inner=None,         # hides the median/box inside violin
-    # #    color="whitesmoke",  # violin fill color
-    # #    linewidth=1,
-    # #    ax=axswarm,
-    # #    cut=0
-    # #)
-    # sbn.swarmplot(x=vararr, y=y_cat, hue=traf_colors,
-    #               palette={"powderblue": "powderblue", "aliceblue": "aliceblue", "dodgerblue": "dodgerblue"},
-    #               edgecolor='k',
-    #               size=5,
-    #               linewidth=0.6,
-    #               ax=axswarm)
+    #figswarm, axswarm = plt.subplots(figsize=(4,1.5))
+    #sbn.swarmplot(x=vararr, y=y_cat, hue=traf_colors,
+    #              palette={"powderblue": "powderblue", "aliceblue": "aliceblue", "dodgerblue": "dodgerblue"},
+    #              edgecolor='k',
+    #              size=5,
+    #              linewidth=0.6,
+    #              ax=axswarm)
     # 
-    # axswarm.set_ylabel("")
-    # axswarm.set_xlim([-10,600])
-    # 
-    # axswarm.tick_params(axis='both',labelsize=11)
-    # axswarm.xaxis.set_major_locator(MultipleLocator(100)) # 0.5)) #1.0))
-    # axswarm.xaxis.set_minor_locator(MultipleLocator(50)) # 0.5)) #1.0))        
-    # #ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f')) # for tau_act
-    # axswarm.legend_.remove()  # if a legend exists
-    # 
-    # [axswarm.axvline(x=i, color='k', alpha=0.3, linestyle='--',lw=1) for i in rcut]
-    
+    #axswarm.set_ylabel("")
+    #axswarm.set_xlim([-10,600])
+    #
+    #axswarm.tick_params(axis='both',labelsize=11)
+    #axswarm.xaxis.set_major_locator(MultipleLocator(100)) # 0.5)) #1.0))
+    #axswarm.xaxis.set_minor_locator(MultipleLocator(50)) # 0.5)) #1.0))        
+    ##ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f')) # for tau_act
+    #axswarm.legend_.remove()  # if a legend exists
+    #
+    #[axswarm.axvline(x=i, color='k', alpha=0.3, linestyle='--',lw=1) for i in rcut]
+    #
     #plt.tight_layout()
-    
+    #
+    ######
+    ### histogram 
+    #fighist, axhist = plt.subplots(figsize=(4, 1.5))
+    #palette = {
+    #    "powderblue": "powderblue",
+    #    "aliceblue": "aliceblue",
+    #    "dodgerblue": "dodgerblue"
+    #}
+    #
+    #vararr = np.array(vararr)
+    #traf_colors = np.array(traf_colors)
+    #
+    ## align bins to cutoff vals
+    #xmin, xmax = -10, 600
+    #base_bins = np.linspace(xmin, xmax, 30)
+    #bins = np.unique(np.concatenate([base_bins, rcut]))
+    #bins = np.sort(bins)
+    #print("N bins:",len(bins))
+    #
+    #data_by_color = [vararr[traf_colors == c] for c in palette.keys()]
+    #axhist.hist(
+    #    data_by_color,
+    #    bins=bins,
+    #    stacked=True,
+    #    color=list(palette.values()),
+    #    edgecolor='k',
+    #    linewidth=0.5
+    #)
+    #
+    ## cutoff lines
+    #for x in rcut:
+    #    axhist.axvline(x, color='k', alpha=0.3, linestyle='--', lw=1)
+    #    
+    #axhist.set_xlim(xmin, xmax)
+    #axhist.set_ylabel("Count")
+    #axhist.tick_params(axis='both', labelsize=10)
+    #
+    #axhist.yaxis.set_major_locator(MultipleLocator(10))
+    #axhist.yaxis.set_minor_locator(MultipleLocator(5))
+    #axhist.xaxis.set_major_locator(MultipleLocator(100))
+    #axhist.xaxis.set_minor_locator(MultipleLocator(50))    
+    #axhist.set_ylim([0,40])
+    #                               
+    #plt.tight_layout()
+    #plt.show()
+
     return
 
 ##############################
@@ -876,3 +914,220 @@ def plotCategories(labels,testpreds):
     
     return 
 
+######################################################################
+def generate_shap_waterfall_custom(labelname,label_thresh,residue,explanation,max_display=10):
+    # custom implementation of shap.waterfall_plot()
+    
+    values = explanation.values
+    base_value = explanation.base_values
+    feature_names = explanation.feature_names
+    
+    # sort by absolute importance
+    order = np.argsort(-np.abs(values))
+    values = values[order]
+    feature_names = np.array(feature_names)[order]
+    
+    # limit number of features
+    values = values[:max_display]
+    feature_names = feature_names[:max_display]
+
+    # cumulative contributions
+    cumulative = base_value + np.cumsum(values)
+
+    fig, ax = plt.subplots(figsize=(9, 4))
+
+    prev = base_value
+
+    spacing = 0.4  # < 1 = tighter, > 1 = looser
+    for i, (val, name) in enumerate(zip(values, feature_names)):
+        color = "lightblue" if val > 0 else "seashell"
+        y = i * spacing        
+
+        ax.barh(
+            y,
+            val,
+            left=prev,
+            color=color,
+            edgecolor="black",
+            height=0.3
+        )
+
+        ## optional text label
+        #ax.text(
+        #    prev + val/2,
+        #    y,
+        #    f"{val:.2f}",
+        #    va="center",
+        #    ha="center",
+        #    fontsize=9
+        #)
+        
+        prev += val
+
+    final_value = base_value + values.sum()
+
+    # reference lines
+    ax.axvline(base_value, linestyle="solid", color="k",
+               label=f"Mean model probability",alpha=0.4,linewidth=2)
+    # threshold line
+    ax.axvline(label_thresh, linestyle="solid", color="darkorange",
+               label=f"Dysfunctional threshold",alpha=0.9,linewidth=2)
+    pred_label= "Dysfunctional" if final_value>label_thresh else "Normal"
+    ax.axvline(final_value, linestyle="dashed", color="mediumorchid",
+               label=f"Model prediction: {pred_label}",alpha=1,linewidth=2)
+
+    ax.set_yticks(np.arange(len(values)) * spacing)
+    ax.set_yticklabels(feature_names)
+    ax.invert_yaxis()
+
+    #ax.set_xlabel("Model output",fontsize=12)
+    ax.set_xlim([0,1])
+    ax.legend(fontsize=11,facecolor='white',framealpha=0.8)
+    ax.tick_params(axis='both',labelsize=12)
+
+    #ax.set_title(f"Waterfall plot - variant {residue}")
+    #plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+    ax.grid(True,alpha=0.1)
+    ax.set_axisbelow(True)
+    plt.savefig(f"shap_waterfall_{labelname}_{residue}.pdf",dpi=300)
+    plt.close()
+
+    return 
+
+######################################################################
+def generate_feat_by_class_violin_plot(all_labels,featclass,ofname): 
+    ''' 
+    Code returns a violin plot comparing structural descriptors b/en normal/dysf variants.
+    '''
+
+    featuresList_biophys=['change no. H acceptor sites','change no. H donor sites','change volume of aa','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane']
+
+    fig,axes = plt.subplots(len(featuresList_biophys),1,figsize=(7,14))
+    colors = ['aliceblue','steelblue'] # gt labels here, so use same benign color as fig 1, a blue in b/en powdrblue and dodgerblue
+    colors = [(*mcolors.to_rgba(c)[:3], 0.4) for c in colors]
+
+    ### sanity checking violin plots with no visible iqr box 
+    ##key = 'change no. H acceptor sites_iks'
+    #key = 'mutat AA hydrophobicity_iks'
+    #b = featclass[key]['benign_feat']
+    #p = featclass[key]['dysfunctional_feat']
+    #
+    #print(f"benign     — median: {np.median(b):.4f}, IQR: {np.percentile(b,75)-np.percentile(b,25):.4f}, % zeros: {(b==0).mean()*100:.1f}%")
+    #print(f"dysfunctional — median: {np.median(p):.4f}, IQR: {np.percentile(p,75)-np.percentile(p,25):.4f}, % zeros: {(p==0).mean()*100:.1f}%")
+    
+    for i, ifeat in enumerate(featuresList_biophys):
+        ax = axes[i]
+        feats, labels,class_list= [],[],[]
+        for labelname in all_labels:
+            key = ifeat + "_" + labelname
+            if key not in featclass:
+                continue 
+            for v in featclass[key]["benign_feat"]:
+                feats.append(v)
+                labels.append(labelname)
+                class_list.append("benign")
+            for v in featclass[key]["dysfunctional_feat"]:
+                feats.append(v)
+                labels.append(labelname)
+                class_list.append("dysfunctional")
+
+        # sanity check 
+        for labelname in all_labels:
+            count = sum(1 for l, c in zip(labels, class_list) if l == labelname and c == "benign")
+            print(f"N counts for {ifeat} and {labelname} and benign: {count}" )
+            count = sum(1 for l, c in zip(labels, class_list) if l == labelname and c == "dysfunctional")        
+            print(f"N counts for {ifeat} and {labelname} and dysfunctional: {count}" )         
+
+            # violin plot misleading for discrete variable            
+            if ifeat not in ["change no. H acceptor sites","change no. H donor sites"]:
+                sbn.violinplot(
+                    ax=ax,            
+                    x=labels,
+                    y=feats,
+                    hue=class_list,
+                    inner=None, #"box",
+                    palette=colors,
+                    cut=0,
+                    scale="width",
+                    hue_order=["benign","dysfunctional"],
+                    split=True,
+                )
+                sbn.boxplot(
+                    ax=ax,            
+                    x=labels,
+                    y=feats,
+                    hue=class_list,
+                    width=0.2,
+                    linewidth=0.5,
+                    #gap=0.2,
+                    palette=colors,
+                    hue_order=["benign","dysfunctional"],
+                    flierprops=dict(marker='o',markersize=2,markerfacecolor='white',markeredgecolor='k',markeredgewidth=0.5),
+                    boxprops={'zorder':2},
+                    medianprops={'color':'red','linewidth':0.4}                    
+                    #legend=False
+                )
+                # recolor dysfunctional box lines 
+                # seaborn draws boxes in hue order, so every 2nd box belongs to dysfunctional
+                for j, artist in enumerate(ax.artists):
+                    if j % 2 == 1:  # dysfunctional is index 1 in hue_order
+                        artist.set_edgecolor('azure')
+                        #artist.set_linecolor('gainsboro')
+                        for k in range(6): # 6 lines per box
+                            if k == 4: # don't change median line color
+                                continue 
+                            line = ax.lines[j*6+k]
+                            line.set_color('azure')
+                            
+
+            else: # box plot only for change no. H * sites, need to adjust fill colors
+                sbn.boxplot(
+                    ax=ax,            
+                    x=labels,
+                    y=feats,
+                    hue=class_list,
+                    width=0.2,
+                    linewidth=0.5,
+                    #gap=0.2,
+                    palette=colors,
+                    hue_order=["benign","dysfunctional"],
+                    flierprops=dict(marker='o',markersize=2,markerfacecolor='white',markeredgecolor='k',markeredgewidth=0.5),
+                    medianprops={'color':'red','linewidth':0.4}
+                    #boxprops={'zorder':2}
+                    #legend=False
+                )
+                            
+        ax.set_xlabel("")
+        ax.set_ylabel(ifeat)
+        ax.grid(True,alpha=0.3)    
+        ax.tick_params(axis='both',labelsize=9)
+        #ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        #ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{x:.2g}"))
+
+        ## only keep legend on first subplot
+        if i==0:
+            ax.legend(fontsize=9)
+        else:
+            ax.get_legend().remove()
+
+        #ax.yaxis.label.set_visible(False) # write out labels in inkscape
+        if i < len(featuresList_biophys) - 1:
+            ax.tick_params(axis='x',labelbottom=False)
+
+    # manual formatting tweaks
+    axes[7].yaxis.set_major_locator(MultipleLocator(0.3))    
+    axes[7].set_ylim([-0.34,0.6])
+
+    # for discrete features
+    axes[0].yaxis.set_major_locator(MultipleLocator(1))
+    axes[1].yaxis.set_major_locator(MultipleLocator(2))
+    axes[1].yaxis.set_minor_locator(MultipleLocator(1))            
+    axes[1].set_ylim([-3.2,3.2])
+    #plt.tight_layout()
+    
+    plt.savefig(ofname, bbox_inches="tight",dpi=300)  
+    plt.show()
+    
+    return

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 ''' 
 Main script for KCNQ1 RF classifiers. 
 This script calls plot_scripts.py and variant_dataset.py
@@ -19,6 +21,8 @@ from sklearn.model_selection import GridSearchCV
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+
+import shap
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -45,7 +49,7 @@ def main():
         config = yaml.safe_load(f)
 
     ## Define variables
-    featuresCSVList = config["featuresCSVList"]
+    featuresCSVList = list(config["featuresCSVList"])
     trainLabelsCSV = config["trainLabelsCSV"]
     testLabelsCSV = config.get("testLabelsCSV",None)
     # Options to modify the data: 
@@ -70,17 +74,37 @@ def main():
     enable_train_save = config.get("enable_train_save",False)
     enable_test = config.get("enable_test",False)
     enable_test_noGTlabels = config.get("enable_test_noGTlabels",False)
+
+    #####
+    ## ADDED following reviewer feedback
+    analyze_features = config.get("analyze_features",False)
+    analyze_features_by_class = config.get("analyze_features_by_class",False)    
+    
+    ### retraining for ablation studies 
+    train_rfc_pretrained = config.get("train_rfc_pretrained",False) # test pretrained models only vs bioevo vs all
+    analyze_validation_oneclass_pretrained = config.get("analyze_validation_oneclass_pretrained",False)
+    
+    # Multi-pdb features procedures # added for "ensemble" code 
+    train_rfc_struct_append = config.get("train_rfc_struct_append",False)
+    analyze_validation_oneclass_struct_append = config.get("analyze_validation_oneclass_struct_append",False)    
+    train_rfc_struct_combine = config.get("train_rfc_struct_combine",False)
+    analyze_validation_oneclass_struct_combine = config.get("analyze_validation_oneclass_struct_combine",False)    
+    train_rfc_struct_combine_mpnn = config.get("train_rfc_struct_combine_mpnn",False)
+    analyze_validation_oneclass_struct_combine_mpnn = config.get("analyze_validation_oneclass_struct_combine_mpnn",False)
+    #####
     
     fname=config.get("fname_prefix",None) #"out_train_val."
     fname_model=config.get("fname_model_prefix",None) #"save_model_state. .."
 
     ## Read data, perform what I need to. 
     for label in config["labels"]:
+        print(f"Processing label: {label}")                        
         labelName = label["name"]
         rcut = label["rcut"]
         pvalcut = label["pvalcut"]
         gof = label["gof"]
         ds = VariantDataset(featuresCSVList,trainLabelsCSV,labelName,rcut,pvalcut,gof,excludeWT,exclNM,exclUNC,VSDonly,PDonly,None,None)
+
         #ds_nonpert = VariantDataset(featuresCSVList,trainLabelsCSV,labelName,rcut,pvalcut,gof,"True",VSDonly,PDonly,None,None)
 
         # Plot measurements, get distributions of variants 
@@ -88,7 +112,7 @@ def main():
             checkRatios(ds)
             plotExp(ds,rcut,pvalcut)
             plt.title(labelName)
-            plt.show()
+            #plt.show()
 
         if am_val_plot:
             include_list = config.get("include_list",None)
@@ -102,14 +126,23 @@ def main():
             plt.show()
         
         # RFC hyperparameter tune, then perform cross-validation
-        if train_rfc:
+        if train_rfc or train_rfc_struct_append or train_rfc_struct_combine or train_rfc_struct_combine_mpnn or train_rfc_pretrained:
             try: # initialize dictionary if not done so
                 best_models_hyperparams
             except NameError:
                 best_models_hyperparams=defaultdict(list)                
             ofname = fname+labelName+".joblib" if fname is not None else None
-            best_models_hyperparams[labelName]=tryRFC(ds,ofname)
-
+            if train_rfc:
+                best_models_hyperparams[labelName]=tryRFC(ds,ofname)
+            elif train_rfc_struct_append:
+                best_models_hyperparams[labelName]=tryRFC_struct(ds,ofname,hyperparam_tune=True,mode='append')
+            elif train_rfc_struct_combine:
+                best_models_hyperparams[labelName]=tryRFC_struct(ds,ofname,hyperparam_tune=True,mode='combine')
+            elif train_rfc_struct_combine_mpnn:
+                best_models_hyperparams[labelName]=tryRFC_struct(ds,ofname,hyperparam_tune=True,mode='combine_mpnn')
+            elif train_rfc_pretrained:
+                best_models_hyperparams[labelName]=tryRFC_pretrained(ds,ofname,hyperparam_tune=True)
+                
         if gather_val_list_class:
             try: # create dictionary if not done already
                 allValClassPreds
@@ -156,20 +189,47 @@ def main():
             except NameError:
                 allTestResults={}
             allTestResults.update(testSingleNoGTLabels(dtest,savedModel,labelName,model_features))
-            
+
+        # Analyze features (impact on prediction, across classes )
+        if analyze_features:
+            savedModel = fname_model+labelName+".joblib" if fname_model is not None else ""
+            # residues with measured GT labels
+            resilist = config.get("analyze_features_get_waterfall",None)
+            if resilist is not None:            
+                featuresSHAP(ds,savedModel,labelName,model_features,waterfall_resis=resilist)
+            # residues without GT labels
+            resilist_nogt = config.get("analyze_features_get_waterfall_nogt", None)
+            if resilist_nogt is not None:
+                dtest = TestDataset(featuresCSVList,labelName,excludeWT,VSDonly,PDonly,None,resilist_nogt)
+                featuresSHAP(dtest,savedModel,labelName,model_features,waterfall_resis=resilist_nogt)
+        if analyze_features_by_class:
+            try: # create dictionary
+                allFeaturesClasses
+            except NameError:
+                allFeaturesClasses={}
+            allFeaturesClasses.update(getVarsFeatClass(ds,labelName,model_features))
+        
         ##########            
 
-    if train_rfc: # if best_models_hyperparams exists, then save to file
+    # for training, if best_models_hyperparams exists, then save to file        
+    if train_rfc or train_rfc_struct_append or train_rfc_struct_combine or train_rfc_struct_combine_mpnn or train_rfc_pretrained:
         ofname = fname+"_hyperparams.joblib" if fname is not None else None                    
         joblib.dump(best_models_hyperparams, ofname)
         
-    if analyze_validation_oneclass:
-        models=['am','orig','origam','origammpnnesm']
-        #models=['am','ours'] 
+    if analyze_validation_oneclass or analyze_validation_oneclass_struct_append or analyze_validation_oneclass_struct_combine or analyze_validation_oneclass_struct_combine_mpnn or analyze_validation_oneclass_pretrained:
+        if analyze_validation_oneclass:
+            models=['am','orig','origam','origammpnnesm']
+        elif analyze_validation_oneclass_struct_append:
+            models=['8sik_all','8sik_all_plus_8sin_struct','8sik_all_plus_8sin_7xnk_struct']
+        elif analyze_validation_oneclass_struct_combine:
+            models= ['8sik_all','8sik_all_plus_std','8sik_all_plus_std_maxdev']
+        elif analyze_validation_oneclass_struct_combine_mpnn:
+            models= ['8sik_nompnn','8sik_avgmpnn','8sik_avgmpnn_stdmpnn_maxdevmpnn']
+        elif analyze_validation_oneclass_pretrained:
+            models=['am','mpnn','esm','ammpnnesm','orig','origammpnnesm'] 
         labels = [cfg["name"] for cfg in config["labels"]]
         plotPerformanceMetrics_oneclass(fname,labels,models)
-        plt.show()
-        
+
     if analyze_crossval:
         models=['am','orig','origam','origammpnnesm']
         cf_crossvalPreds(fname,models,check_list,featuresCSVList,trainLabelsCSV,config)
@@ -212,7 +272,11 @@ def main():
         write_tofile = config.get("write_tofile",None)        
         if write_tofile is not None:
             writePredstoHDF5(labels,allTestResults,write_tofile)
-            
+
+    # Violin plot analyzing feature distributions across classes 
+    if analyze_features_by_class:
+        labels = [cfg["name"] for cfg in config["labels"]]
+        generate_feat_by_class_violin_plot(labels,allFeaturesClasses,'feat_by_class_violin.pdf')
     return 
 
 ##############################
@@ -241,7 +305,7 @@ def tryRFC(ds,ofname_data=None,hyperparam_tune=True):
     RFC hyperparam tune. Then train/validation with cross-validation.
     '''
 
-    featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial on membrane','AM','MPNN','ESM']
+    featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','MPNN','ESM']
 
     idx0,idx1 = 0,15 # all features 
     # test various feature sets . everything gets passed in (features_np), but only pass ones I want during training 
@@ -427,19 +491,20 @@ def plotPerformanceMetrics_oneclass(fname_prefix,all_labels,models):
                 precision,recall, thresholds = skm.precision_recall_curve(trues, preds)
                 axprc[imodel][ilabel].plot(recall,precision,alpha=0.1)
                 
-                if (model=="am"):
+                if (model=="am"): 
                     mcc = skm.matthews_corrcoef(trues,(preds>0.3402).astype(int))
                     brier = skm.brier_score_loss(trues,preds)
                     mcc_valid_results[model][ilabel].append(mcc)
-                    brier_valid_results[model][ilabel].append(brier)                    
+                    brier_valid_results[model][ilabel].append(brier)
                 else:
                     ### MCC max
                     thresholds = np.arange(0.1,0.9,0.01)
                     mccThresh =  [skm.matthews_corrcoef(trues, (preds > thresh).astype(int)) for thresh in thresholds]
                     maxMCC = max(mccThresh)
                     maxMCCThresh = thresholds[np.argmax(mccThresh)]
-                    print("max mcc:",maxMCC)
-                    print(maxMCCThresh)
+                    if model=="esm":
+                        print("max mcc:",maxMCC)
+                        print(maxMCCThresh)
                     mcc_valid_results[model][ilabel].append(maxMCC)
                     brier = skm.brier_score_loss(trues,preds)
                     brier_valid_results[model][ilabel].append(brier)                                        
@@ -467,10 +532,13 @@ def plotPerformanceMetrics_oneclass(fname_prefix,all_labels,models):
     print("Brier score violin plot:")    
     generate_mcc_violin_plot(all_labels,models,brier_valid_results,ofname='brier_violin_rfc.pdf')        
 
-    model1 = 'am'
-    model2=['orig','origam','origammpnnesm']
-    generate_diff_plots(all_labels,model1,model2,mcc_valid_results,ofname='mcc_diff_rfc.pdf')    
-
+    ######
+    ## this chunk commented out in main_ultipdb.py code
+    #model1 = 'am'
+    #model2=['orig','origam','origammpnnesm']
+    #generate_diff_plots(all_labels,model1,model2,mcc_valid_results,ofname='mcc_diff_rfc.pdf')    
+    ######
+    
     for ilabel,labelname in enumerate(all_labels):
         axprc[0][ilabel].set_title(labelname)
     
@@ -519,7 +587,8 @@ def plotPerformanceMetrics_oneclass(fname_prefix,all_labels,models):
             if imodel != len(models) - 1:
                 ax.set_xticklabels([])
     
-                
+    plt.show()
+    
     return 
 
 ##############################
@@ -869,7 +938,6 @@ def cf_crossvalPreds(fname_prefix,models,check_list,featuresCSVList,trainLabelsC
     [a.tick_params(axis='both', labelsize=10) for a in ax]
     [a.grid(True,alpha=0.3) for a in ax]
     
-    #plt.show()
     plt.savefig("brier_breakdown.png",bbox_inches="tight",dpi=300)
     
     return
@@ -909,6 +977,335 @@ def writePredstoHDF5(labels,testpreds,ofname):
         f.create_dataset("variant_index_values", data=np.arange(n_rows, dtype=np.int32))
 
     return
+
+##########################################################################################
+## FUNCTIONS ADDED FOLLOWING REVIEWER FEEDBACK
+##########################################################################################
+
+def tryRFC_struct(ds,ofname_data=None,hyperparam_tune=True,mode=None):
+    '''
+    RFC hyperparam tune. Then train/validation with cross-validation.
+    Added for mutli-structure feature comparison 
+    Copy of tryRFC: adding "mode" to test hard-coded feature combinations. 
+    Adjust featuresList, idx0-idx1 indices to test relevant features, and remove separate AM save
+    These are manually determined based on what feature combinations I want to test and the input data!
+    See "featsets" for the combination of features tested in individual models. 
+    '''
+
+    ####################    
+    if mode=='append':
+        featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','MPNN','ESM','8sin functional density (polarizability 6.5 A)','8sin functional density (polarizability 12 A)','8sin functional density (hydrophobicity 1 A)','8sin functional density (hydrophobicity 6.5 A)','8sin distance from channel pore axis','8sin burial in membrane','8sin MPNN','7xnk functional density (polarizability 6.5 A)','7xnk functional density (polarizability 12 A)','7xnk functional density (hydrophobicity 1 A)','7xnk functional density (hydrophobicity 6.5 A)','7xnk distance from channel pore axis','7xnk burial in membrane','7xnk MPNN']    
+        idx0,idx1 = 0,29 # all features 
+        featsets=[[0,15],[0,22],[0,29]] 
+        models=['8sik_all','8sik_all_plus_8sin_struct','8sik_all_plus_8sin_7xnk_struct']        
+    elif mode=='combine':
+        featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','MPNN','ESM','std functional density (polarizability 6.5 A)','std functional density (polarizability 12 A)','std functional density (hydrophobicity 1 A)','std functional density (hydrophobicity 6.5 A)','std distance from channel pore axis','std burial in membrane','std MPNN','max dev functional density (polarizability 6.5 A)','max dev functional density (polarizability 12 A)','max dev functional density (hydrophobicity 1 A)','max dev functional density (hydrophobicity 6.5 A)','max dev distance from channel pore axis','max dev burial in membrane','max dev MPNN']
+        idx0,idx1 = 0,29
+        featsets=[[0,15],[0,22],[0,29]]
+        models= ['8sik_all','8sik_all_plus_std','8sik_all_plus_std_maxdev']
+    elif mode=='combine_mpnn':
+        featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','ESM','avg MPNN','std MPNN','max dev MPNN']
+        idx0,idx1 = 0,17
+        featsets=[[0,14],[0,15],[0,17]]
+        models= ['8sik_nompnn','8sik_avgmpnn','8sik_avgmpnn_stdmpnn_maxdevmpnn']
+    else: 
+        sys.exit("ERROR: no or unknown 'mode' specified for training using multi-pdb features. Current modes implemented are 'append' and 'combine'")
+        
+    ####################
+        
+    sorted_residues = sorted(ds.featureDict.keys())
+    features_np = np.stack([ds.featureDict[name].detach().cpu().numpy() for name in sorted_residues])[:,idx0:idx1]
+    labels_np = (np.stack([ds.labelDict[name].detach().cpu().numpy() for name in sorted_residues]) >= 1).astype(int)
+
+    ####################    
+    # grid search with cross-val
+    best_models = {}
+    for comboModel,featidx in zip(models,featsets):
+        features_np_icombo = features_np[:,featidx[0]:featidx[1]]
+        if hyperparam_tune:
+            best_model = gridSearchRFC(features_np_icombo,labels_np)
+        else:
+            print("No hyperparameter tuning. Need to explicitly set hyperparameters.")            
+        best_models[comboModel] = best_model
+    ####################
+        
+    kf = RepeatedStratifiedKFold(n_splits=5, n_repeats=20, random_state=14926) #31133)
+    
+    # mcc_scores, am_mccs = [],[]
+    results = {}    
+    for fold, (train_idx, test_idx) in enumerate(kf.split(features_np,labels_np)):
+        X_train_orig , y_train_orig = features_np[train_idx], labels_np[train_idx]
+        X_test_orig,y_test_orig = features_np[test_idx],labels_np[test_idx]
+        
+        X_train = X_train_orig
+        y_train = y_train_orig
+
+        # Fit on training features, test on test split
+        perturb_mask = (X_test_orig[:, 0:4].sum(axis=1) != 0)    # only get perturbing variants for test
+        X_test = X_test_orig[perturb_mask]
+        y_test = y_test_orig[perturb_mask]
+        valid_indices = [test_idx[i] for i in np.where(perturb_mask)[0]]
+        valid_vars = [sorted_residues[i] for i in valid_indices]
+        results[fold]={}
+
+        ##########
+        ###### Fit and pred for each feature combination 
+        for comboModel,featidx in zip(models,featsets): # loop over feature combinations 
+            pipeline = best_models[comboModel] 
+            pipeline.fit(X_train[:,featidx[0]:featidx[1]],y_train)
+            y_pred_proba = pipeline.predict_proba(X_test[:,featidx[0]:featidx[1]]) 
+            y_pred_class = np.argmax(y_pred_proba, axis=1)  # convert probabilities to class predictions
+            mcc_thresh = performance_check(best_models[comboModel],y_test,y_pred_proba,featuresList)            
+            results[fold][comboModel] = {
+                "validation": {
+                    "preds": y_pred_proba,
+                    "trues": y_test,
+                    "variants": valid_vars
+                },
+                "mcc_thresh": mcc_thresh
+            }
+        ## END         for comboModel,featset in zip(models,featsets):
+
+        ##########
+         
+    ## save cross validation results to file
+    if ofname_data is not None:
+        joblib.dump(results, ofname_data)
+    
+    return best_models
+
+##############################
+def tryRFC_pretrained(ds,ofname_data=None,hyperparam_tune=True):
+    ''' 
+    RFC hyperparam tune. Then train/validation with cross-validation.
+    Added to evaluate use of pretrained models alone vs BioEvo features vs All model 
+    Saving am, mpnn, esm, then am+mpnn+esm , then bioevo, then all models. 
+    Uses the same feature list as original paper model. 
+    '''
+
+    featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','MPNN','ESM']
+
+    idx0,idx1 = 0,15 # all features 
+    # test various feature sets . everything gets passed in (features_np), but only pass ones I want during training 
+    featsets=[[12,15],[0,12],[0,15]]
+    models=['ammpnnesm','orig','origammpnnesm'] 
+    
+    sorted_residues = sorted(ds.featureDict.keys())
+    features_np = np.stack([ds.featureDict[name].detach().cpu().numpy() for name in sorted_residues])[:,idx0:idx1]
+    labels_np = (np.stack([ds.labelDict[name].detach().cpu().numpy() for name in sorted_residues]) >= 1).astype(int)
+
+    ####################    
+    # grid search with cross-val
+    best_models = {}
+    for comboModel,featidx in zip(models,featsets):
+        features_np_icombo = features_np[:,featidx[0]:featidx[1]]
+        if hyperparam_tune:
+            best_model = gridSearchRFC(features_np_icombo,labels_np)
+        else:
+            print("No hyperparameter tuning. Need to explicitly set hyperparameters.")
+            
+        best_models[comboModel] = best_model
+    ####################
+        
+    kf = RepeatedStratifiedKFold(n_splits=5, n_repeats=20, random_state=14926) #31133)
+    
+    # mcc_scores, am_mccs = [],[]
+    results = {}    
+    for fold, (train_idx, test_idx) in enumerate(kf.split(features_np,labels_np)):
+        X_train_orig , y_train_orig = features_np[train_idx], labels_np[train_idx]
+        X_test_orig,y_test_orig = features_np[test_idx],labels_np[test_idx]
+        
+        X_train = X_train_orig
+        y_train = y_train_orig
+
+        # Fit on training features, test on test split
+        perturb_mask = (X_test_orig[:, 0:4].sum(axis=1) != 0)    # only get perturbing variants for test
+        X_test = X_test_orig[perturb_mask]
+        y_test = y_test_orig[perturb_mask]
+        valid_indices = [test_idx[i] for i in np.where(perturb_mask)[0]]
+        valid_vars = [sorted_residues[i] for i in valid_indices]
+        results[fold]={}
+
+        ##########
+        ###### Fit and pred for each feature combination 
+        for comboModel,featidx in zip(models,featsets): # loop over feature combinations 
+            pipeline = best_models[comboModel] 
+            pipeline.fit(X_train[:,featidx[0]:featidx[1]],y_train)
+            y_pred_proba = pipeline.predict_proba(X_test[:,featidx[0]:featidx[1]]) 
+            y_pred_class = np.argmax(y_pred_proba, axis=1)  # convert probabilities to class predictions
+            mcc_thresh = performance_check(best_models[comboModel],y_test,y_pred_proba,featuresList)            
+            results[fold][comboModel] = {
+                "validation": {
+                    "preds": y_pred_proba,
+                    "trues": y_test,
+                    "variants": valid_vars
+                },
+                "mcc_thresh": mcc_thresh
+            }
+        ## END         for comboModel,featset in zip(models,featsets):
+
+        ##########
+        ###### Compare and save pseudo-preds for AM , ESM, MPNNN
+        results[fold]["am"] = {
+            "validation": {
+                "preds": X_test[:,12],
+                "trues": y_test,
+                "variants": valid_vars
+                
+            }
+        }
+        results[fold]["esm"] = {
+            "validation": {
+                "preds": X_test[:,13],
+                "trues": y_test,
+                "variants": valid_vars                
+            }
+        }
+        results[fold]["mpnn"] = {
+            "validation": {
+                "preds": X_test[:,14],
+                "trues": y_test,
+                "variants": valid_vars                                
+            }
+        }
+        ##########
+         
+    #print(f"Mean MCC over 5 folds: {np.mean(mcc_scores):.3f}, for AM: {np.mean(am_mccs):.3f}\n")
+
+    ## save cross validation results to file
+    if ofname_data is not None:
+        joblib.dump(results, ofname_data)
+    
+    return best_models
+
+##############################
+def featuresSHAP(ds,savedModel,labelname,model_features,waterfall_resis=None):
+    # calculate shap values for features
+
+    # define features 
+    #featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','MPNN','ESM']
+    featuresList=[r"$\Delta$ Num. H acceptor sites",r"$\Delta$ Num. H donor sites",r"$\Delta$ Volume AA",r"$\Delta$ PSSM NR",'Mutant AA hydrophobicity in region','Mutant AA polarizability',r"Funct. density (polarizability 6.5 $\AA$)",r"Funct. density (polarizability 12 $\AA$)",r"Funct. density (hydrophobicity 1 $\AA$)",r"Funct. density (hydrophobicity 6.5 $\AA$)", r"Dist. from channel pore axis ($\AA$)",'Burial in membrane','AM','ProteinMPNN','ESM']
+
+    if model_features=='orig':
+        idx0,idx1=0,12
+    elif model_features=='origam':
+        idx0,idx1=0,13
+    elif model_features=='origammpnnesm':
+        idx0,idx1 = 0,15
+    else:
+        print(f"Unrecognized option for model_features: {model_features}. Exiting.")
+        return
+    
+    # load model 
+    saved = joblib.load(savedModel)
+    pipeline = saved['model']
+    thresh = saved['thresh']   # saved mcc cutoff threshold
+    print(f"{labelname} thresh= {thresh} ")
+
+    # need to get rfc and standard scaler 
+    scaler = pipeline.named_steps['standardscaler']
+    rf     = pipeline.named_steps['randomforestclassifier']
+
+    # scale features as done in the model training
+    residues = list(ds.featureDict.keys())
+    sorted_residues = sorted(residues, key=lambda x: int(''.join(filter(str.isdigit,x))))
+
+    features_np = np.stack([ds.featureDict[name].detach().cpu().numpy() for name in sorted_residues])[:,idx0:idx1]
+    X_all_scaled = scaler.transform(features_np[:, idx0:idx1])
+
+    explainer = shap.TreeExplainer(rf)
+    shapvals = explainer.shap_values(X_all_scaled)
+
+    #####
+    # plot global feature importance
+    class_label=1 # shap returns two arrays for each class label (0=benign, 1=dysf) , can plot either 
+    vals = shapvals[class_label] if isinstance(shapvals,list) else shapvals
+    shap.summary_plot(vals, X_all_scaled, feature_names=featuresList,plot_type="bar",show=False)
+    plt.close()
+
+    #mean_shap = shapvals[1].mean(axis=0)  # mean SHAP per feature
+    #for name, val in zip(featuresList, mean_shap):
+    #    print(f"{name:<45s} {val:+.4f}")
+    #
+    ## does am have a positive mean shap even on variants that are known benign?
+    #labels_np = (np.stack([ds.labelDict[name].detach().cpu().numpy() for name in sorted_residues]) >= 1).astype(int)
+    #tn_mask = (labels_np == 0) # true negatives, benign 
+    #am_shap_on_negatives = shapvals[1][tn_mask, 12] # am index is 12 
+    #print(f"Mean AM SHAP on true negatives: {am_shap_on_negatives.mean():.4f}")
+
+    #####    
+    # waterfall plot for a single prediction if specified by user
+    for iresi in waterfall_resis: 
+        try:
+            iresi_idx = sorted_residues.index(str(iresi))
+            #print(f"Features for {str(iresi)}: {ds.featureDict[str(iresi)]}")            
+        except ValueError:
+            print(f"WARNING: skipping analyze_features_get_waterfall. {iresi} not found.",file=sys.stderr)
+            return
+        ####        
+        # print information about this variant
+        if hasattr(ds, "labelDict"):
+            print(f"Label for {str(iresi)}: {ds.labelDict[str(iresi)]}, continuous= {ds.labelDictCont[str(iresi)]}")
+        # get prediction (NOT for validation/testing)
+        iresi_feat = ds.featureDict[str(iresi)].detach().cpu().numpy()
+        iresi_output = pipeline.predict_proba(iresi_feat[idx0:idx1].reshape(1,-1))
+        iresi_pred = int(iresi_output[0,1]>thresh)
+        print(f"Model prediction (NOT FOR VALIDATION/TESTING) for {str(iresi)}: output={iresi_output}, pred label={iresi_pred}")
+        ####
+        
+        explanation = shap.Explanation(
+            values=vals[iresi_idx],
+            base_values=explainer.expected_value[class_label]
+            if isinstance(explainer.expected_value, (list, np.ndarray))
+            else explainer.expected_value,
+            data=X_all_scaled[iresi_idx],
+            feature_names=featuresList,
+        )
+        generate_shap_waterfall_custom(labelname,thresh,sorted_residues[iresi_idx],explanation,max_display=15)
+        
+        #shap.waterfall_plot(explanation,show=False)
+        #plt.title(f"Waterfall plot - sample {sorted_residues[iresi_idx]}")
+        #plt.tight_layout()
+        #plt.savefig(f"shap_waterfall_{labelname}_{sorted_residues[iresi_idx]}.png")
+        #plt.close()
+        
+    #####        
+    
+    return
+
+##############################
+def getVarsFeatClass(ds,labelname,model_features):
+    ''' 
+    Collect variant features and labels. 
+    For analyzing biophysical feature distribution across classes.
+    Use raw features . 
+    '''
+
+    # define features, model must be 'origammpnnesm'
+    if model_features=='origammpnnesm':
+        idx0,idx1 = 0,15
+    else:
+        print(f"Unrecognized option for model_features: {model_features}. Exiting.")
+        return
+    
+    featuresList=['change no. H acceptor sites','change no. H donor sites','change volume of aa','change PSSM NR','mutat AA hydrophobicity','mutant AA polarizability','functional density (polarizability 6.5 A)','functional density (polarizability 12 A)','functional density (hydrophobicity 1 A)','functional density (hydrophobicity 6.5 A)','distance from channel pore axis','burial in membrane','AM','MPNN','ESM']
+
+    residues = ds.variantNames
+    sorted_residues = sorted(residues, key=lambda x: int(''.join(filter(str.isdigit,x))))
+    features_np = np.stack([ds.featureDict[name].detach().cpu().numpy() for name in sorted_residues])[:,idx0:idx1] 
+    labels_np = (np.stack([ds.labelDict[name].detach().cpu().numpy() for name in sorted_residues]) >= 1).astype(int)
+    labels_np = labels_np.squeeze() # sanity check that labels_np is 1-dim 
+    benign_mask = (labels_np == 0) # benign mask 
+
+    featClass = {}
+    for i,ifeat in enumerate(featuresList):
+        key=ifeat+"_"+labelname
+        featClass[key] = {
+            "benign_feat": features_np[benign_mask,i],            
+            "dysfunctional_feat": features_np[~benign_mask,i]
+        }
+
+    return featClass
 
 ######################################################################
 if __name__ == "__main__":
